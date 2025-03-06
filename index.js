@@ -1,6 +1,20 @@
 const express = require('express')
+const bodyParser = require('body-parser')
+const morgan = require('morgan')
 
 const app = express()
+app.use(bodyParser.json())
+app.use(morgan((tokens, request, response) => {
+    const body = (tokens.method(request, response) ==  "POST") ? JSON.stringify(request.body) 
+                                                               : "";
+
+    return [
+        tokens.method(request, response),
+        tokens.url(request, response),
+        tokens['response-time'](request, response), 'ms',
+        body
+    ].join(' ')
+}))
 
 const phonebook =[
     { 
@@ -66,7 +80,7 @@ app.delete("/api/persons/:id", (request, response) => {
     const index = phonebook.findIndex(entry => entry.id === id)
     
     if (index != -1) {
-        const person = phonebook[index]
+        const person = structuredClone(phonebook[index])
         phonebook.splice(index, 1)
 
         response.status(204)
@@ -79,8 +93,40 @@ app.delete("/api/persons/:id", (request, response) => {
             .send("Person not found")
 })
 
+app.post("/api/persons", (request, response) => {
+    const person = request.body
 
-const PORT = 3004
+    if (!person.hasOwnProperty('name') || !person.hasOwnProperty('number')) {
+        response.status(404)
+                .send(JSON.stringify({
+                    "error": "name or number is missing"
+                }))
+        
+        return;
+    }
+
+    if(phonebook.findIndex(personObj => personObj.name === person.name) != -1) {
+        response.status(404)
+                .send(JSON.stringify({
+                    "error": "name must be unique"
+                }))
+        
+        return;
+    }
+
+    person.id = String(Math.ceil(Math.random() * 10000 + 1))
+
+    phonebook.push(person)
+
+    response.set({
+        "Content-Type": "application/json"
+    })
+    response.status(200)
+            .send(JSON.stringify(person))
+
+})
+
+const PORT = 3005
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
