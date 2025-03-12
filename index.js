@@ -1,8 +1,11 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
+const cors = require('cors')
 
 const app = express()
+app.use(express.static('dist'))
+app.use(cors())
 app.use(bodyParser.json())
 app.use(morgan((tokens, request, response) => {
     const body = (tokens.method(request, response) ==  "POST") ? JSON.stringify(request.body) 
@@ -82,11 +85,26 @@ app.delete("/api/persons/:id", (request, response) => {
     if (index != -1) {
         const person = structuredClone(phonebook[index])
         phonebook.splice(index, 1)
-
-        response.status(204)
-                .send(JSON.stringify(person))
         
-        return
+        return response.status(204)
+                .send(JSON.stringify(person))
+    }
+
+    response.status(404)
+            .send("Person not found")
+})
+
+app.put("/api/persons/:id", (request, response) => {
+    const id = request.params.id
+    const index = phonebook.findIndex(entry => entry.id === id)
+    
+    if (index != -1) {
+        const person = request.body
+        phonebook[index] = person
+
+        console.log(person)
+        return response.status(200)
+                .send(JSON.stringify(person))
     }
 
     response.status(404)
@@ -97,24 +115,19 @@ app.post("/api/persons", (request, response) => {
     const person = request.body
 
     if (!person.hasOwnProperty('name') || !person.hasOwnProperty('number')) {
-        response.status(404)
+        return response.status(404)
                 .send(JSON.stringify({
                     "error": "name or number is missing"
                 }))
-        
-        return;
+    
     }
 
     if(phonebook.findIndex(personObj => personObj.name === person.name) != -1) {
-        response.status(404)
+        return response.status(404)
                 .send(JSON.stringify({
                     "error": "name must be unique"
                 }))
-        
-        return;
     }
-
-    person.id = String(Math.ceil(Math.random() * 10000 + 1))
 
     phonebook.push(person)
 
@@ -126,7 +139,7 @@ app.post("/api/persons", (request, response) => {
 
 })
 
-const PORT = 3006
+const PORT = process.env.port || 3000
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
