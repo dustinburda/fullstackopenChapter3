@@ -1,7 +1,11 @@
+require('dotenv').config()
+
 const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
+
+const PhoneEntry = require('./models/phone')
 
 const app = express()
 app.use(express.static('dist'))
@@ -19,35 +23,19 @@ app.use(morgan((tokens, request, response) => {
     ].join(' ')
 }))
 
-const phonebook =[
-    { 
-      "id": "1",
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": "2",
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": "3",
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": "4",
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
 app.get("/api/persons", (request, response) => {
-    response.set({
-        "Content-Type": "application/json"
+    let phoneEntries = []
+
+    PhoneEntry.find({}).then(entries => {
+        phoneEntries = [...entries]
+
+        response.set({
+            "Content-Type": "application/json"
+        })
+        response.status(200)
+                .send(JSON.stringify(phoneEntries))
+
     })
-    response.status(200)
-            .send(JSON.stringify(phonebook))
 })
 
 app.get("/info", (request, response) => {
@@ -122,24 +110,21 @@ app.post("/api/persons", (request, response) => {
     
     }
 
-    if(phonebook.findIndex(personObj => personObj.name === person.name) != -1) {
-        return response.status(404)
-                .send(JSON.stringify({
-                    "error": "name must be unique"
-                }))
-    }
-
-    phonebook.push(person)
-
-    response.set({
-        "Content-Type": "application/json"
+    let entry = new PhoneEntry({
+        name: person.name,
+        number: person.number
     })
-    response.status(200)
-            .send(JSON.stringify(person))
 
+    entry.save().then(entry => {
+        response.set({
+            "Content-Type": "application/json"
+        })
+        response.status(200)
+                .send(JSON.stringify(person))
+    })    
 })
 
-const PORT = process.env.port || 3000
+const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
