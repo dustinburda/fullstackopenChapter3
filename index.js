@@ -43,60 +43,60 @@ app.get("/info", (request, response) => {
         "Content-Type": "text/plain"
     })
 
- 
     const today = new Date(Date.now())
-    response.status(200)
-            .send(`Phonebook has info for ${phonebook.length} people` + "\n" + `${today.toUTCString()}`)
+
+    PhoneEntry.countDocuments({}).then((count) => {  
+        response.status(200)
+            .send(`Phonebook has info for ${count} people` + "\n" + `${today.toUTCString()}`)
+    })
 })
 
 app.get("/api/persons/:id", (request, response) => {
-    const id = request.params.id
-    const person = phonebook.find(entry => entry.id === id)
-
-    if (person !== undefined) {
-        response.set({
-            "Content-Type": "application/json"
-        })
-        response.status(200)
-                .send(JSON.stringify(person))
-        return
-    }
-
-    response.status(404)
-            .send("Person not found!")
+    PhoneEntry.findById(request.params.id)
+              .then(person => {
+                if(!person) {
+                    response.status(404)
+                            .send("Person not found")
+                } else {
+                    response.status(200)
+                    .send(JSON.stringify(person))
+                }
+              }).catch(error => console.log(error));
 })
 
 app.delete("/api/persons/:id", (request, response) => {
-    const id = request.params.id
-    const index = phonebook.findIndex(entry => entry.id === id)
-    
-    if (index != -1) {
-        const person = structuredClone(phonebook[index])
-        phonebook.splice(index, 1)
-        
-        return response.status(204)
-                .send(JSON.stringify(person))
-    }
-
-    response.status(404)
-            .send("Person not found")
+    PhoneEntry.findByIdAndDelete(request.params.id)
+              .then(person => {
+                if(!person) {
+                    response.status(404)
+                            .send("Person not found")
+                } else {
+                    response.status(201)
+                    .send(JSON.stringify(person))
+                }
+              }).catch(error => console.log(error));
 })
 
 app.put("/api/persons/:id", (request, response) => {
     const id = request.params.id
-    const index = phonebook.findIndex(entry => entry.id === id)
-    
-    if (index != -1) {
-        const person = request.body
-        phonebook[index] = person
 
-        console.log(person)
-        return response.status(200)
-                .send(JSON.stringify(person))
-    }
+    PhoneEntry.findByIdAndDelete(request.params.id)
+              .then(person => {
+                if (!person) {
+                    response.status(404)
+                            .send("Person not found")
+                }
+              })
 
-    response.status(404)
-            .send("Person not found")
+
+    const newPerson = new PhoneEntry ({
+        ...request.body
+    });
+    newPerson.save().then(person => {
+        console.log(person);
+        response.status(201)
+                .send(JSON.stringify(person));
+    })
 })
 
 app.post("/api/persons", (request, response) => {
@@ -119,10 +119,21 @@ app.post("/api/persons", (request, response) => {
         response.set({
             "Content-Type": "application/json"
         })
-        response.status(200)
+        response.status(201)
                 .send(JSON.stringify(person))
     })    
 })
+
+const errorHandler = (error, request, response, next) => {
+    console.log(error);
+    if (error.name === 'CastError') {
+        return response.status(404).send({
+            error: "malformatted id"
+        })
+    }
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
