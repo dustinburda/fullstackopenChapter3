@@ -8,8 +8,21 @@ mongoose.connect(url)
         .catch(error => console.log("Error connecting to MongoDB", error.message))
 
 const phoneSchema = new mongoose.Schema({
-    name: String,
-    number: String
+    name: {
+        type: String,
+        minLength: 3,
+        required: true
+    },
+    number: {
+        type: String,
+        validate: {
+            validator: function(v) {
+                return /^(?=.{8,}$)\d{2,3}-\d{1,}$/.test(v);
+            },
+            message: props => `${props.value} is not a valid phone number!`
+        },
+        required: [true, "User phone number is required!"]
+    }
 })
 
 phoneSchema.set('toJSON', {
@@ -22,3 +35,4 @@ phoneSchema.set('toJSON', {
 
 module.exports = mongoose.model("Phone", phoneSchema);
 
+// ^(?=.{8,}$)

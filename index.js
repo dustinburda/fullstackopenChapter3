@@ -29,6 +29,7 @@ app.get("/api/persons", (request, response) => {
     PhoneEntry.find({}).then(entries => {
         phoneEntries = [...entries]
 
+        console.log(entries);
         response.set({
             "Content-Type": "application/json"
         })
@@ -65,6 +66,7 @@ app.get("/api/persons/:id", (request, response) => {
 })
 
 app.delete("/api/persons/:id", (request, response) => {
+    console.log(request.params.id)
     PhoneEntry.findByIdAndDelete(request.params.id)
               .then(person => {
                 if(!person) {
@@ -77,7 +79,7 @@ app.delete("/api/persons/:id", (request, response) => {
               }).catch(error => console.log(error));
 })
 
-app.put("/api/persons/:id", (request, response) => {
+app.put("/api/persons/:id", (request, response, next) => {
     const id = request.params.id
 
     PhoneEntry.findByIdAndDelete(request.params.id)
@@ -96,10 +98,10 @@ app.put("/api/persons/:id", (request, response) => {
         console.log(person);
         response.status(201)
                 .send(JSON.stringify(person));
-    })
+    }).catch(error => next(error))
 })
 
-app.post("/api/persons", (request, response) => {
+app.post("/api/persons", (request, response, next) => {
     const person = request.body
 
     if (!person.hasOwnProperty('name') || !person.hasOwnProperty('number')) {
@@ -111,26 +113,32 @@ app.post("/api/persons", (request, response) => {
     }
 
     let entry = new PhoneEntry({
-        name: person.name,
-        number: person.number
+        ...person
     })
 
-    entry.save().then(entry => {
+    entry.save().then(newPerson => {
         response.set({
             "Content-Type": "application/json"
         })
         response.status(201)
-                .send(JSON.stringify(person))
-    })    
+                .send(JSON.stringify(newPerson))
+    }).catch(error => next(error))    
 })
 
 const errorHandler = (error, request, response, next) => {
-    console.log(error);
     if (error.name === 'CastError') {
+        console.log('CastError')
         return response.status(404).send({
             error: "malformatted id"
         })
+    } else if (error.name === 'ValidationError') {
+        console.log("ValidationError")
+        return response.status(404).send({
+            error: error.message
+        })
     }
+
+    next(error)
 }
 
 app.use(errorHandler)
