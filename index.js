@@ -12,7 +12,7 @@ app.use(express.static('dist'))
 app.use(cors())
 app.use(bodyParser.json())
 app.use(morgan((tokens, request, response) => {
-  const body = (tokens.method(request, response) ==  'POST') ? JSON.stringify(request.body) 
+  const body = (tokens.method(request, response) ===  'POST') ? JSON.stringify(request.body)
     : ''
 
   return [
@@ -46,7 +46,7 @@ app.get('/info', (request, response) => {
 
   const today = new Date(Date.now())
 
-  PhoneEntry.countDocuments({}).then((count) => {  
+  PhoneEntry.countDocuments({}).then((count) => {
     response.status(200)
       .send(`Phonebook has info for ${count} people` + '\n' + `${today.toUTCString()}`)
   })
@@ -107,7 +107,7 @@ app.post('/api/persons', (request, response, next) => {
       .send(JSON.stringify({
         'error': 'name or number is missing'
       }))
-    
+
   }
 
   let entry = new PhoneEntry({
@@ -120,7 +120,7 @@ app.post('/api/persons', (request, response, next) => {
     })
     response.status(201)
       .send(JSON.stringify(newPerson))
-  }).catch(error => next(error))    
+  }).catch(error => next(error))
 })
 
 const errorHandler = (error, request, response, next) => {
